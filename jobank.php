@@ -55,6 +55,22 @@ function add_code_before_content($content){
 
     if (is_page(get_id_by_slug('jobankpost-create'))) {
 
+
+        if (!get_page_by_path('test-page-title3', OBJECT, 'jobankrequest')) {
+            $new_page_id = wp_insert_post([
+                'post_type'     => 'jobankrequest',
+                'post_title'    => 'Test Page Title',
+                'post_content'  => 'Test Page Content',
+                'post_status'   => 'publish',
+                'post_author'   => 1,
+                'post_name'     => 'test-page-title3',
+                'post_parent'   => 14,
+            ]);
+
+            var_dump($new_page_id);
+        }
+
+
         ob_start();
         require( __DIR__ . '/pages/jobankpost.create.php' );
         $output = ob_get_contents();
@@ -68,7 +84,22 @@ function add_code_before_content($content){
             'post_type'   => 'jobankpost'
         ]);
 
+        $jobankrequest = get_posts([
+            'numberposts' => 9,
+            'post_type'   => 'jobankrequest',
+            'child_of' => 14,
+        ]);
+
+
+        $jobankrequest_2 = get_children([
+            'posts_per_page' => 9,
+            'order'          => 'ASC',
+            'post_parent'    => 14,
+            'post_type'      => 'jobankrequest',
+        ]);
+
         $content = json_encode($jobankpost);
+        $content .= json_encode($jobankrequest_2);
 
         return $content;
     } else  if (is_page(get_id_by_slug('jobankrequest'))) {
@@ -85,21 +116,6 @@ function add_code_before_content($content){
     return $content;
 }
 add_filter('the_content', 'add_code_before_content');
-
-// function jobank_test(){
-//     // if( isset($_GET['create_jobank']) ){
-//     //     exit();
-//     // }
-//     // if ( is_page(get_id_by_slug('jobankpost')) ) {
-//     //     $jobankpost = get_posts([
-//     //         'numberposts' => 9,
-//     //         'post_type'   => 'jobankpost'
-//     //     ]);
-
-//     //     $content = json_encode($jobankpost);
-//     // }
-// }
-// do_action('init', 'jobank_test');
 
 
 function get_id_by_slug($page_slug){
