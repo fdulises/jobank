@@ -24,9 +24,15 @@ Version: 1.0
 //     );
 // }
 
+// function jobank_add_new_field(){
+//     register_rest_field('jobankpost', []);
+// }
+// add_action('rest_api_init', 'jobank_add_new_field');
+
 
 // Habilitar los custom types
 function jobank_custom_type(){
+
     register_post_type('jobankpost', [
         'public'       => true,
         'show_in_rest' => false,
@@ -40,77 +46,141 @@ function jobank_custom_type(){
         'rest_base'    => 'jobankrequest',
         'label'        => 'BT Respuestas'
     ]);
+
+    register_post_type('jobankcv', [
+        'public'       => true,
+        'show_in_rest' => false,
+        'rest_base'    => 'jobankcv',
+        'label'        => 'BT CV'
+    ]);
+    
 }
 add_action('init', 'jobank_custom_type');
 
-
-// function jobank_add_new_field(){
-//     register_rest_field('jobankpost', []);
-// }
-// add_action('rest_api_init', 'jobank_add_new_field');
-
-// Renderizado de las paginas custom
 function add_code_before_content($content){
-    echo is_page(get_id_by_slug('jobankpost-create'));
 
+    $postid = get_the_ID();
+    $posttype = get_post_type( $postid );
+    $jobankpost_term = 'jobankpost';
+    $jobankrequest_term = 'jobankrequest';
+    $userid = get_current_user_id();
+
+    // Logica para publicar respuesta
+    if ( $posttype == $jobankpost_term && isset($_GET['createrequest']) ) {
+
+        $new_page_id = wp_insert_post([
+            'post_type'     => 'jobankrequest',
+            'post_title'    => 'Respuesta usuario '. $userid,
+            'post_content'  => '--',
+            'post_status'   => 'publish',
+            'post_author'   => $userid,
+            'post_parent'   => $postid,
+        ]);
+
+        return "Respuesta #" . $new_page_id . "publicada con éxito";
+
+    }
+
+    // Sección ver propuesta 
+    if ($posttype == $jobankpost_term) {
+        $jobankrequest_2 = get_children([
+            'posts_per_page' => 20,
+            'order'          => 'ASC',
+            'post_parent'    => $postid,
+            'post_type'      => $jobankrequest_term,
+        ]);
+
+        $content = json_encode($jobankrequest_2);
+    }
+
+    // Logica para publicar propuestas de trabajo
     if (is_page(get_id_by_slug('jobankpost-create'))) {
 
+        if( isset($_GET['save']) ){
 
-        if (!get_page_by_path('test-page-title3', OBJECT, 'jobankrequest')) {
             $new_page_id = wp_insert_post([
-                'post_type'     => 'jobankrequest',
-                'post_title'    => 'Test Page Title',
+                'post_type'     => 'jobankpost',
+                'post_title'    => 'Test propuesta laboral',
                 'post_content'  => 'Test Page Content',
                 'post_status'   => 'publish',
-                'post_author'   => 1,
-                'post_name'     => 'test-page-title3',
-                'post_parent'   => 14,
+                'post_author'   => $userid,
+                //'post_name'     => 'test-page-title3',
             ]);
 
-            var_dump($new_page_id);
+            return "Propuesta #" . $new_page_id . "publicada con éxito";
+
+        }else{
+            ob_start();
+            require(__DIR__ . '/pages/jobank.post.create.php');
+            $output = ob_get_contents();
+            ob_end_clean();
+
+            return $output;
         }
-
-
-        ob_start();
-        require( __DIR__ . '/pages/jobankpost.create.php' );
-        $output = ob_get_contents();
-        ob_end_clean();
-
-        return $output;
-        
-    }else if( is_page( get_id_by_slug('jobankpost') ) ){
+    }
+    // Sección listado de propuestas de trabajo
+    if( is_page( get_id_by_slug('jobankpost') ) ){
         $jobankpost = get_posts([
-            'numberposts' => 9,
+            'numberposts' => 20,
             'post_type'   => 'jobankpost'
         ]);
-
-        $jobankrequest = get_posts([
-            'numberposts' => 9,
-            'post_type'   => 'jobankrequest',
-            'child_of' => 14,
-        ]);
-
-
-        $jobankrequest_2 = get_children([
-            'posts_per_page' => 9,
-            'order'          => 'ASC',
-            'post_parent'    => 14,
-            'post_type'      => 'jobankrequest',
-        ]);
-
         $content = json_encode($jobankpost);
-        $content .= json_encode($jobankrequest_2);
-
         return $content;
-    } else  if (is_page(get_id_by_slug('jobankrequest'))) {
-        $jobankpost = get_posts([
-            'numberposts' => 9,
-            'post_type'   => 'jobankrequest'
-        ]);
+    }
 
-        $content = json_encode($jobankpost);
+    // Logica para publicar CV
+    if (is_page(get_id_by_slug('jobankcv'))) {
 
-        return $content;
+        if (isset($_GET['save'])) {
+            var_dump($_POST);
+
+            var_dump(isset(
+                $_POST['field-name'],
+                $_POST['field-surname'],
+                $_POST['field-lastname'],
+                $_POST['field-mail']
+            ));
+
+            $has_cv = get_posts([
+                'post_type'   => 'jobankcv',
+                'numberposts' => 1,
+                'author' => $userid,
+            ]);
+
+            var_dump($has_cv);
+
+            // if( isset(
+            //     $_POST['field-name'],
+            //     $_POST['field-surname'],
+            //     $_POST['field-lastname'],
+            //     $_POST['field-mail']
+            // ) ){
+            //     $new_page_id = wp_insert_post([
+            //         'post_type'     => 'jobankcv',
+            //         'post_title'    => 'CV #'. $userid,
+            //         'post_content'  => json_encode([
+            //             'field-name' => $_POST['field-name'],
+            //             'field-surname' => $_POST['field-surname'],
+            //             'field-lastname' => $_POST['field-lastname'],
+            //             'field-mail' => $_POST['field-mail'],
+            //         ]),
+            //         'post_status'   => 'publish',
+            //         'post_author'   => $userid,
+            //         'post_name'     => 'cvid_' . $userid,
+            //     ]);
+    
+            //     return "Cv #" . $new_page_id . "publicado con éxito";
+            // }
+
+
+        } else {
+            ob_start();
+            require(__DIR__ . '/pages/jobank.cv.create.php');
+            $output = ob_get_contents();
+            ob_end_clean();
+
+            return $output;
+        }
     }
 
     return $content;
@@ -120,9 +190,6 @@ add_filter('the_content', 'add_code_before_content');
 
 function get_id_by_slug($page_slug){
     $page = get_page_by_path($page_slug);
-    if ($page) {
-        return $page->ID;
-    } else {
-        return null;
-    }
+    if ($page) return $page->ID;
+    return null;
 }

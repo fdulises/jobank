@@ -1,6 +1,6 @@
 <div class="container">
     <h2>Publicar Oferta</h2>
-    <form>
+    <form method="post" action="?save">
         <div class="jb-fg">
             <div class="jb-fgl">
                 <label for="field-cargo">Cargo</label>
@@ -59,5 +59,6 @@
                 </label>
             </div>
         </div>
+        <button type="submit" class="btn btn-">Publicar</button>
     </form>
 </div>

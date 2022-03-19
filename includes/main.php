@@ -67,5 +67,6 @@
             <div class="col-2">10/04/22</div>
             <div class="col-2">1</div>
         </div>
+        <button type="button" class="btn btn-">Publicar</button>
     </div>
 </div>
