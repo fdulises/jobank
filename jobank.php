@@ -11,25 +11,6 @@ Author: Lorem ipsum dolor
 Version: 1.0
 */
 
-// // Hook the 'admin_menu' action hook, run the function named 'mfp_Add_My_Admin_Link()'
-// add_action( 'admin_menu', 'jobank_Add_My_Admin_Link' );
-
-// // Add a new top level menu link to the ACP
-// function jobank_Add_My_Admin_Link(){
-//     add_menu_page(
-//         'Bolsa de trabajo', // Title of the page
-//         'Bolsa de trabajo', // Text to show on the menu link
-//         'manage_options', // Capability requirement to see the link
-//         'jobank/includes/main.php' // The 'slug' - file to display when clicking the link
-//     );
-// }
-
-// function jobank_add_new_field(){
-//     register_rest_field('jobankpost', []);
-// }
-// add_action('rest_api_init', 'jobank_add_new_field');
-
-
 // Habilitar los custom types
 function jobank_custom_type(){
 
@@ -57,13 +38,18 @@ function jobank_custom_type(){
 }
 add_action('init', 'jobank_custom_type');
 
-function add_code_before_content($content){
+function jobank_main($content){
 
     $postid = get_the_ID();
     $posttype = get_post_type( $postid );
     $jobankpost_term = 'jobankpost';
     $jobankrequest_term = 'jobankrequest';
+    $jobankcv_term = 'jobankcv';
     $userid = get_current_user_id();
+
+    // echo $posttype, "<br>";
+    // echo $jobankpost_term, "<br>";
+    // echo $postid, "<br>";
 
     // Logica para publicar respuesta
     if ( $posttype == $jobankpost_term && isset($_GET['createrequest']) ) {
@@ -78,19 +64,25 @@ function add_code_before_content($content){
         ]);
 
         return "Respuesta #" . $new_page_id . "publicada con éxito";
-
     }
+    
+    // Sección ver propuesta
+    if ( $posttype == $jobankpost_term ) {
 
-    // Sección ver propuesta 
-    if ($posttype == $jobankpost_term) {
-        $jobankrequest_2 = get_children([
+        $propuesta = get_post($postid);
+
+        $request_list = get_children([
             'posts_per_page' => 20,
             'order'          => 'ASC',
             'post_parent'    => $postid,
             'post_type'      => $jobankrequest_term,
         ]);
 
-        $content = json_encode($jobankrequest_2);
+        $content = json_encode([
+            'post' => $propuesta,
+            'children' => $request_list
+        ]);
+
     }
 
     // Logica para publicar propuestas de trabajo
@@ -98,16 +90,39 @@ function add_code_before_content($content){
 
         if( isset($_GET['save']) ){
 
-            $new_page_id = wp_insert_post([
-                'post_type'     => 'jobankpost',
-                'post_title'    => 'Test propuesta laboral',
-                'post_content'  => 'Test Page Content',
-                'post_status'   => 'publish',
-                'post_author'   => $userid,
-                //'post_name'     => 'test-page-title3',
-            ]);
+            if( isset(
+                $_POST['field-cargo'],
+                $_POST['field-ciudad'],
+                $_POST['field-contrato'],
+                $_POST['field-turno'],
+                $_POST['field-experiencia'],
+                $_POST['field-description'],
+                $_POST['field-empresa_name'],
+                $_POST['field-empresa_web']
+            ) ){
+    
+                $new_page_id = wp_insert_post([
+                    'post_type'     => 'jobankpost',
+                    'post_title'    => 'Test propuesta laboral',
+                    'post_content'  => json_encode([
+                        'field-cargo' => $_POST['field-cargo'],
+                        'field-ciudad' => $_POST['field-ciudad'],
+                        'field-contrato' => $_POST['field-contrato'],
+                        'field-turno' => $_POST['field-turno'],
+                        'field-experiencia' => $_POST['field-experiencia'],
+                        'field_description' => $_POST['field_description'],
+                        'field-empresa_name' => $_POST['field-empresa_name'],
+                        'field-empresa_web' => $_POST['field-empresa_web'],
+                    ]),
+                    'post_status'   => 'publish',
+                    'post_author'   => $userid,
+                    //'post_name'     => 'test-page-title3',
+                ]);
+    
+                return "Propuesta #" . $new_page_id . "publicada con éxito";
+                
+            }
 
-            return "Propuesta #" . $new_page_id . "publicada con éxito";
 
         }else{
             ob_start();
@@ -118,8 +133,9 @@ function add_code_before_content($content){
             return $output;
         }
     }
+
     // Sección listado de propuestas de trabajo
-    if( is_page( get_id_by_slug('jobankpost') ) ){
+    if( is_page( get_id_by_slug($jobankpost_term) ) ){
         $jobankpost = get_posts([
             'numberposts' => 20,
             'post_type'   => 'jobankpost'
@@ -129,7 +145,7 @@ function add_code_before_content($content){
     }
 
     // Logica para publicar CV
-    if (is_page(get_id_by_slug('jobankcv'))) {
+    if (is_page(get_id_by_slug($jobankcv_term))) {
 
         if (isset($_GET['save'])) {
             var_dump($_POST);
@@ -142,35 +158,35 @@ function add_code_before_content($content){
             ));
 
             $has_cv = get_posts([
-                'post_type'   => 'jobankcv',
+                'post_type'   => $jobankcv_term,
                 'numberposts' => 1,
                 'author' => $userid,
             ]);
 
             var_dump($has_cv);
 
-            // if( isset(
-            //     $_POST['field-name'],
-            //     $_POST['field-surname'],
-            //     $_POST['field-lastname'],
-            //     $_POST['field-mail']
-            // ) ){
-            //     $new_page_id = wp_insert_post([
-            //         'post_type'     => 'jobankcv',
-            //         'post_title'    => 'CV #'. $userid,
-            //         'post_content'  => json_encode([
-            //             'field-name' => $_POST['field-name'],
-            //             'field-surname' => $_POST['field-surname'],
-            //             'field-lastname' => $_POST['field-lastname'],
-            //             'field-mail' => $_POST['field-mail'],
-            //         ]),
-            //         'post_status'   => 'publish',
-            //         'post_author'   => $userid,
-            //         'post_name'     => 'cvid_' . $userid,
-            //     ]);
+            if( isset(
+                $_POST['field-name'],
+                $_POST['field-surname'],
+                $_POST['field-lastname'],
+                $_POST['field-mail']
+            ) ){
+                $new_page_id = wp_insert_post([
+                    'post_type'     => 'jobankcv',
+                    'post_title'    => 'CV #'. $userid,
+                    'post_content'  => json_encode([
+                        'field-name' => $_POST['field-name'],
+                        'field-surname' => $_POST['field-surname'],
+                        'field-lastname' => $_POST['field-lastname'],
+                        'field-mail' => $_POST['field-mail'],
+                    ]),
+                    'post_status'   => 'publish',
+                    'post_author'   => $userid,
+                    'post_name'     => 'cvid_' . $userid,
+                ]);
     
-            //     return "Cv #" . $new_page_id . "publicado con éxito";
-            // }
+                return "Cv #" . $new_page_id . "publicado con éxito";
+            }
 
 
         } else {
@@ -185,7 +201,7 @@ function add_code_before_content($content){
 
     return $content;
 }
-add_filter('the_content', 'add_code_before_content');
+add_filter('the_content', 'jobank_main');
 
 
 function get_id_by_slug($page_slug){
