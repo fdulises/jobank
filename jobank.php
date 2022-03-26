@@ -11,7 +11,9 @@ Author: Lorem ipsum dolor
 Version: 1.0
 */
 
-// Habilitar los custom types
+/*
+* Habilitar los custom types
+*/
 function jobank_custom_type(){
 
     register_post_type('jobankpost', [
@@ -38,6 +40,10 @@ function jobank_custom_type(){
 }
 add_action('init', 'jobank_custom_type');
 
+
+/*
+* Logica del plugin
+*/
 function jobank_main($content){
 
     $postid = get_the_ID();
@@ -46,10 +52,6 @@ function jobank_main($content){
     $jobankrequest_term = 'jobankrequest';
     $jobankcv_term = 'jobankcv';
     $userid = get_current_user_id();
-
-    // echo $posttype, "<br>";
-    // echo $jobankpost_term, "<br>";
-    // echo $postid, "<br>";
 
     // Logica para publicar respuesta
     if ( $posttype == $jobankpost_term && isset($_GET['createrequest']) ) {
@@ -144,59 +146,55 @@ function jobank_main($content){
         return $content;
     }
 
-    // Logica para publicar CV
+    // Logica para ver y publicar CV
     if (is_page(get_id_by_slug($jobankcv_term))) {
 
-        if (isset($_GET['save'])) {
-            var_dump($_POST);
 
-            var_dump(isset(
+        // Logica para guardar CV
+        if ( isset(
                 $_POST['field-name'],
                 $_POST['field-surname'],
                 $_POST['field-lastname'],
                 $_POST['field-mail']
-            ));
+            ) ) {
+            $post_data = [
+                'post_type'     => 'jobankcv',
+                'post_title'    => 'CV #' . $userid,
+                'post_content'  => json_encode([
+                    'field-name' => $_POST['field-name'],
+                    'field-surname' => $_POST['field-surname'],
+                    'field-lastname' => $_POST['field-lastname'],
+                    'field-mail' => $_POST['field-mail'],
+                ]),
+                'post_status'   => 'publish',
+                'post_author'   => $userid,
+                'post_name'     => 'cvid_' . $userid,
+            ];
 
-            $has_cv = get_posts([
-                'post_type'   => $jobankcv_term,
-                'numberposts' => 1,
-                'author' => $userid,
-            ]);
+            if ($actual_cv) $post_data['ID'] = $actual_cv['ID'];
 
-            var_dump($has_cv);
-
-            if( isset(
-                $_POST['field-name'],
-                $_POST['field-surname'],
-                $_POST['field-lastname'],
-                $_POST['field-mail']
-            ) ){
-                $new_page_id = wp_insert_post([
-                    'post_type'     => 'jobankcv',
-                    'post_title'    => 'CV #'. $userid,
-                    'post_content'  => json_encode([
-                        'field-name' => $_POST['field-name'],
-                        'field-surname' => $_POST['field-surname'],
-                        'field-lastname' => $_POST['field-lastname'],
-                        'field-mail' => $_POST['field-mail'],
-                    ]),
-                    'post_status'   => 'publish',
-                    'post_author'   => $userid,
-                    'post_name'     => 'cvid_' . $userid,
-                ]);
-    
-                return "Cv #" . $new_page_id . "publicado con éxito";
-            }
-
-
-        } else {
-            ob_start();
-            require(__DIR__ . '/pages/jobank.cv.create.php');
-            $output = ob_get_contents();
-            ob_end_clean();
-
-            return $output;
+            if ($actual_cv) $new_page_id = wp_update_post($post_data);
+            else $new_page_id = wp_insert_post($post_data);
         }
+
+        // Logica para visualizar CV
+        $actual_cv = get_posts([
+            'post_type'   => $jobankcv_term,
+            'numberposts' => 1,
+            'author' => $userid,
+        ]);
+        $cv = [];
+        if( $actual_cv ){
+            $actual_cv = (array) $actual_cv[0];
+            $cv = json_decode($actual_cv['post_content'], true);
+        }
+
+        ob_start();
+        require(__DIR__ . '/pages/jobank.cv.create.php');
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        return $output;
     }
 
     return $content;
@@ -204,6 +202,9 @@ function jobank_main($content){
 add_filter('the_content', 'jobank_main');
 
 
+/*
+* Obtener ID de post Mediante su SLUG
+*/
 function get_id_by_slug($page_slug){
     $page = get_page_by_path($page_slug);
     if ($page) return $page->ID;
