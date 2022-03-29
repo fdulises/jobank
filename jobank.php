@@ -149,6 +149,12 @@ function jobank_main($content){
     // Logica para ver y publicar CV
     if (is_page(get_id_by_slug($jobankcv_term))) {
 
+        // Validar si ya existe cv para el usuario
+        $actual_cv = get_posts([
+            'post_type'   => $jobankcv_term,
+            'numberposts' => 1,
+            'author' => $userid,
+        ]);
 
         // Logica para guardar CV
         if ( isset(
@@ -171,10 +177,12 @@ function jobank_main($content){
                 'post_name'     => 'cvid_' . $userid,
             ];
 
-            if ($actual_cv) $post_data['ID'] = $actual_cv['ID'];
-
-            if ($actual_cv) $new_page_id = wp_update_post($post_data);
-            else $new_page_id = wp_insert_post($post_data);
+            if ($actual_cv){
+                $post_data['ID'] = $actual_cv[0]->ID;
+                $new_page_id = wp_update_post($post_data);
+            }else{
+                $new_page_id = wp_insert_post($post_data);
+            }
         }
 
         // Logica para visualizar CV
