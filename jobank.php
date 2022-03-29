@@ -36,7 +36,13 @@ function jobank_custom_type(){
         'rest_base'    => 'jobankcv',
         'label'        => 'BT CV'
     ]);
-    
+
+    register_post_type('jobankprofile', [
+        'public'       => true,
+        'show_in_rest' => false,
+        'rest_base'    => 'jobankprofile',
+        'label'        => 'BT Empresas'
+    ]);
 }
 add_action('init', 'jobank_custom_type');
 
@@ -51,6 +57,7 @@ function jobank_main($content){
     $jobankpost_term = 'jobankpost';
     $jobankrequest_term = 'jobankrequest';
     $jobankcv_term = 'jobankcv';
+    $jobank_e_term = 'jobankprofile';
     $userid = get_current_user_id();
 
     // Logica para publicar respuesta
@@ -164,7 +171,7 @@ function jobank_main($content){
                 $_POST['field-mail']
             ) ) {
             $post_data = [
-                'post_type'     => 'jobankcv',
+                'post_type'     => $jobankcv_term,
                 'post_title'    => 'CV #' . $userid,
                 'post_content'  => json_encode([
                     'field-name' => $_POST['field-name'],
@@ -199,6 +206,65 @@ function jobank_main($content){
 
         ob_start();
         require(__DIR__ . '/pages/jobank.cv.create.php');
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        return $output;
+    }
+
+    // Logica para configurar perfil de empresa
+    if (is_page(get_id_by_slug($jobank_e_term))) {
+
+        // Validar si ya existe perfil
+        $actual_post = get_posts([
+            'post_type'   => $jobank_e_term,
+            'numberposts' => 1,
+            'author' => $userid,
+        ]);
+
+        // Logica para guardar perfil
+        if (isset(
+            $_POST['field-name'],
+            $_POST['field-surname'],
+            $_POST['field-lastname'],
+            $_POST['field-mail']
+        )) {
+            $post_data = [
+                'post_type'     => $jobank_e_term,
+                'post_title'    => 'Perfil #' . $userid,
+                'post_content'  => json_encode([
+                    'field-name' => $_POST['field-name'],
+                    'field-surname' => $_POST['field-surname'],
+                    'field-lastname' => $_POST['field-lastname'],
+                    'field-mail' => $_POST['field-mail'],
+                ]),
+                'post_status'   => 'publish',
+                'post_author'   => $userid,
+                'post_name'     => 'perfilid_' . $userid,
+            ];
+
+            if ($actual_post) {
+                $post_data['ID'] = $actual_post[0]->ID;
+                $new_page_id = wp_update_post($post_data);
+            } else {
+                $new_page_id = wp_insert_post($post_data);
+            }
+        }
+
+        // Logica para visualizar perfil
+        $actual_post = get_posts([
+            'post_type'   => $jobank_e_term,
+            'numberposts' => 1,
+            'author' => $userid,
+        ]);
+        $perfil = [];
+        if ($actual_post) {
+            $actual_post = (array) $actual_post[0];
+            $perfil = json_decode($actual_post['post_content'], true);
+        }
+
+        ob_start();
+        require(__DIR__ . '/pages/jobank.perfil.create.php');
         $output = ob_get_contents();
         ob_end_clean();
 
